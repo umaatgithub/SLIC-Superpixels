@@ -15,19 +15,24 @@ void Slic6D::setDsm(cv::Mat *value)
     dsm = value;
 }
 
+cv::Mat *Slic6D::getConn_clusters() const
+{
+    return conn_clusters;
+}
+
 void Slic6D::init()
 {
-    std::cout << "Start : Init method." << std::endl;
+    //std::cout << "Start : Init method." << std::endl;
 
     clusters = new cv::Mat(image->rows, image->cols, CV_16SC1);
     clusters->setTo(-1);
-    std::cout << "Cluster matrix size : " << clusters->rows << " " << clusters->cols << std::endl;
-    std::cout << "Cluster matrix init value : " << clusters->at<short>(1000,1000) << std::endl;
+    //std::cout << "Cluster matrix size : " << clusters->rows << " " << clusters->cols << std::endl;
+    //std::cout << "Cluster matrix init value : " << clusters->at<short>(1000,1000) << std::endl;
 
     distances = new cv::Mat(image->rows, image->cols, CV_32FC1);
     distances->setTo(DBL_MAX);
-    std::cout << "Distance matrix size : " << distances->rows << " " << distances->cols << std::endl;
-    std::cout << "Distance matrix init value : " << distances->at<float>(67,67) << std::endl;
+    //std::cout << "Distance matrix size : " << distances->rows << " " << distances->cols << std::endl;
+    //std::cout << "Distance matrix init value : " << distances->at<float>(67,67) << std::endl;
 
     cv::Mat *gray_image = new cv::Mat;
     cv::cvtColor(*image, *gray_image, cv::COLOR_BGR2GRAY);
@@ -56,7 +61,7 @@ void Slic6D::init()
             //center_counts.push_back(0);
         }
     }
-    std::cout << "End : Init method" << std::endl;
+    //std::cout << "End : Init method" << std::endl;
 }
 
 void Slic6D::generate_superpixels(cv::Mat *input_image, cv::Mat *dsm, int num_superpixels)
@@ -64,7 +69,7 @@ void Slic6D::generate_superpixels(cv::Mat *input_image, cv::Mat *dsm, int num_su
     setImage(input_image);
     setDsm(dsm);
     setNum_superpixels(num_superpixels);
-    std::cout << "Image size : " << input_image->rows << " " << input_image->cols << std::endl;
+    //std::cout << "Image size : " << input_image->rows << " " << input_image->cols << std::endl;
 
     init();
 
@@ -144,12 +149,12 @@ void Slic6D::generate_superpixels(cv::Mat *input_image, cv::Mat *dsm, int num_su
 //    cv::imshow("Clusters", clustercon);
 //    cv::waitKey();
  //   display_clusters("Initial cluster", false);
-    std::cout << "Number of clusters : " << centers.size() << std::endl;
+    //std::cout << "Number of clusters : " << centers.size() << std::endl;
 }
 
 void Slic6D::create_connectivity()
 {
-    int min_cluster_size = (image->rows*image->cols)/(this->num_superpixels*4);
+    int min_cluster_size = (image->rows*image->cols)/(this->num_superpixels*10);
     conn_clusters = new cv::Mat(image->rows, image->cols, CV_16SC1);
     conn_clusters->setTo(-1);
 
@@ -197,11 +202,11 @@ void Slic6D::create_connectivity()
             }
         }
     }
-    std::cout << "Number of connected clusters : " << label << std::endl;
+    //std::cout << "Number of connected clusters : " << label << std::endl;
 }
 
 
-void Slic6D::display_clusters(std::string win_name, bool connected)
+cv::Mat Slic6D::display_clusters(std::string win_name, bool connected)
 {
     cv::Mat *cluster;
     if(connected==true){
@@ -211,7 +216,7 @@ void Slic6D::display_clusters(std::string win_name, bool connected)
         cluster = clusters;
     }
 
-    cv::Mat disp_cluster = cv::Mat::zeros(cv::Size(image->cols,image->rows), CV_8SC3);
+    cv::Mat disp_cluster = cv::Mat::zeros(cv::Size(image->cols,image->rows), CV_8UC3);
     //short r=0,g=0,b=0;
     for (int y=0; y<this->image->rows; y++) {
         for (int x=0; x<this->image->cols; x++) {
@@ -230,21 +235,44 @@ void Slic6D::display_clusters(std::string win_name, bool connected)
             }
         }
     }
+    cv::Mat disp_image ;//= cv::Mat::zeros(cv::Size(image->cols,image->rows), CV_8SC3);
+    //std::cout << image->type() << " " << disp_cluster.type() << std::endl;
 
-    cv::imshow(win_name, disp_cluster);
-    cv::waitKey();
+
+    cv::Mat edge;
+    cluster->convertTo(edge,CV_8U);
+    cv::Canny(edge, edge, 0, 0*3, 3);
+    cv::dilate(edge, edge, cv::getStructuringElement(cv::MORPH_RECT,cv::Size(3,3)));
+//    cv::imshow("Edge", edge);
+//    cv::waitKey();
+
+    disp_image = image->clone();
+    //cv::addWeighted(*image, 0.90, disp_cluster, 0.10, 0, disp_image, CV_8UC3);
+    disp_image.setTo(cv::Vec3b(0,0,255), edge==255);
+    //cv::imshow(win_name, disp_image);
+    //cv::waitKey();
+    return disp_image;
 }
 
 float Slic6D::compute_dist(int center_index, cv::Vec3b color, cv::Point3f coordinate)
 {
+    float alpha_color = 3.0/255.0;
+    float alpha_coord = 1.0/step;
+    float alpha_dsm = 1.0;
     float dist_color = sqrt(pow(centers[center_index][0] - color.val[0], 2)
                            + pow(centers[center_index][1] - color.val[1], 2)
                            + pow(centers[center_index][2] - color.val[2], 2));
     float dist_coord = sqrt(pow(centers[center_index][3] - coordinate.x, 2)
                            + pow(centers[center_index][4] - coordinate.y, 2));
                            //+ pow(centers[center_index][5] - coordinate.z, 2));
+    float dist_dsm = sqrt(pow(centers[center_index][5] - coordinate.z, 2));
 
-    return sqrt(pow(dist_color / 1.0, 2) + pow(dist_coord / 1.0, 2));
+    //float distance = dist_color + dist_coord;
+    float distance = alpha_color*dist_color +
+                     alpha_coord*dist_coord +
+                     alpha_dsm*dist_dsm;
+    return distance;
+    //return sqrt(pow(dist_color / 1.0, 2) + pow(dist_coord / 1.0, 2));
     //return 0.0;
 }
 

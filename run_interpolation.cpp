@@ -6,8 +6,8 @@ using namespace std;
 
 int main(){
 
-    std::string path= "/home/ura/Documents/KUL/Projects/Vansteelandt/Data/DSM/DSM_stad_25831.tif";
-    cv::Mat image_dsm = cv::imread(path, cv::IMREAD_UNCHANGED);
+    std::string dsm_path= "/home/ura/Documents/KUL/Projects/Vansteelandt/Data/DSM/DSM_stad_25831.tif";
+    cv::Mat image_dsm = cv::imread(dsm_path, cv::IMREAD_UNCHANGED);
     cout << "Input image size : " << image_dsm.rows << " " << image_dsm.cols << endl;
     double minVal, maxVal;
     cv::minMaxLoc(image_dsm, &minVal, &maxVal);
@@ -22,12 +22,12 @@ int main(){
     std::cout << "Normalized image min-max values : " << minVal << "     " << maxVal << std::endl;
 
     cv::Mat image_dsm_resize;
-    cv::resize(image_dsm, image_dsm_resize, cv::Size(40000, 39999), 0, 0, cv::INTER_CUBIC);
+    cv::resize(image_dsm, image_dsm_resize, cv::Size(40000, 39999), 0, 0, cv::INTER_LINEAR);
     cout << "Resized image size : " << image_dsm_resize.rows << " " << image_dsm_resize.cols << endl;
     cv::minMaxLoc(image_dsm_resize, &minVal, &maxVal);
     std::cout << "Resized image min-max values : " << minVal << "     " << maxVal << std::endl;
 
-    std::string basepath = path.substr(0, path.find("."));
+    std::string basepath = dsm_path.substr(0, dsm_path.find("."));
     for (int y=0; ((y+1)*1024+720)<=39999; y++) {
         for (int x=0; ((x+1)*1024)<=40000;x++) {
             cv::Range rows(y*1024+720, (y+1)*1024+720);

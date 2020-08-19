@@ -3,7 +3,7 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <vector>
 #include <iostream>
@@ -37,8 +37,9 @@ public:
 
     void generate_superpixels(cv::Mat *input_image, cv::Mat *dsm, int num_superpixels);
     void create_connectivity();
-    void display_clusters(std::string win_name, bool connected);
+    cv::Mat display_clusters(std::string win_name, bool connected);
 
+    cv::Mat *getConn_clusters() const;
 };
 
 #endif // SLIC6D_H
